@@ -40,11 +40,11 @@ def voxel_tv_batch(p0s, env, seg, model, dc, nv=50, iter=3):
                 pas.append(pasi)
         
         # 2. Extract slices with Info
-        pas = np.array(pas);   ims = np.zeros([la, 3, 33, 33])   # 样本总量 nv*lp
+        pas = np.array(pas);   ims = np.zeros([la, 3, 33, 33])   # Total number of samples: nv*lp
         for i in range(0, la):
             ims[i, :] = get_sample_3(pas[i], env, dc, step=2)
         
-        # 3. Predice alpha and beta, and further refine vn to vf
+        # 3. Predict alpha and beta, and further refine vn to vf
         ims = torch.from_numpy(ims).to('cuda', dtype=torch.float)
         with torch.no_grad():
             lb_pred = model(ims).to('cpu').numpy()
@@ -117,7 +117,7 @@ def mat2gray_bk(im):
         return im2
 
 
-# Function for turning vn to vf
+# Function for turning vn to vf (Vector transformation in CRN)
 def lb_to_tv(lb_pred, pas):
     
     # lb_pred:      predicted alpha and beta by CRN
@@ -235,7 +235,27 @@ def mean_shift_dv( data, radius ):
     return clustercenter
 
 
-
+# Function for generating dc.npy
+def produce_dc(wd=16):
+    
+    # This template is used for fast 2.5D slice extraction
+    # As shown in Function get_sample_3, this template dc can be scaled and adjusted to 
+    # any position, posture, and width, with parameter provided by pasi.
+    # Instead using for-loop, it saves time for calculating the positions of voxels in interpolation
+    
+    sz = 2*wd+1   # The half-width of 2.5D sample is wd=16, hence the full-width is sz=33
+    
+    d1 = np.zeros((sz,sz));   d2 = d1.copy()
+    
+    for i in range(0, sz):
+        d1[i,:] = np.zeros((1,sz)) + (i-wd)     # d1 ~ The set of offsets in the v1 direction
+        d2[i,:] = range(-wd, wd+1)              # d2 ~ The set of offsets in the v2 direction
+    
+    d1=d1.reshape(sz*sz,);   d2=d2.reshape(sz*sz,)   # 所有采样点的实际位置
+    dc=[d1,d2]
+    # np.save('path_to\\dc.npy', dc)
+    
+    return dc
 
 
 
